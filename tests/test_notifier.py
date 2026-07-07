@@ -1,4 +1,7 @@
-from wimbledon.notifier import build_digest_message, TELEGRAM_MAX_LENGTH
+import pytest
+import responses
+
+from wimbledon.notifier import build_digest_message, TELEGRAM_MAX_LENGTH, send_telegram_message
 
 
 def make_match(i):
@@ -42,3 +45,33 @@ def test_build_digest_message_splits_into_multiple_chunks_when_too_long():
     combined = "".join(chunks)
     for i in range(400):
         assert f"Player{i}A" in combined
+
+
+@responses.activate
+def test_send_telegram_message_posts_to_bot_api():
+    responses.add(
+        responses.POST,
+        "https://api.telegram.org/botFAKE_TOKEN/sendMessage",
+        json={"ok": True},
+        status=200,
+    )
+
+    send_telegram_message("FAKE_TOKEN", "12345", "hello")
+
+    assert len(responses.calls) == 1
+    sent_body = responses.calls[0].request.body
+    assert b"hello" in sent_body
+    assert b"12345" in sent_body
+
+
+@responses.activate
+def test_send_telegram_message_raises_on_http_error():
+    responses.add(
+        responses.POST,
+        "https://api.telegram.org/botFAKE_TOKEN/sendMessage",
+        json={"ok": False, "description": "bad request"},
+        status=400,
+    )
+
+    with pytest.raises(Exception):
+        send_telegram_message("FAKE_TOKEN", "12345", "hello")
