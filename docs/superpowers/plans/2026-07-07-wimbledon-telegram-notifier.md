@@ -60,49 +60,100 @@ Every task after Task 1 consumes matches in this normalized shape (a plain `dict
 
 ---
 
-### Task 1: Research the tennis API and implement `fetch_matches.py`
+### Task 1: Implement `fetch_matches.py` against the LiveScore API
 
-No public tennis live-score API documentation shows a full example JSON response without an API key — the real field names are unknown until you actually sign up and call it. This task's first half is a research spike; its second half implements and tests the module against what you find. Do not skip ahead to Task 2 until this task's tests pass against a real captured response.
+Confirmed by live testing against a real subscription: the API is **LiveScore** by Api Dojo on RapidAPI (host `livescore6.p.rapidapi.com`, free Basic plan). The endpoint `GET /matches/v2/list-by-date` with query params `Category=tennis` and `Date=YYYYMMDD` (e.g. `20260707`) returns every tennis match scheduled that day, grouped into "Stages". Wimbledon's stages have `Cnm == "Wimbledon"` (e.g. `Sid 25632` = Men's Singles, `Sid 25634` = Women's Singles, `CompId "1112"` = "Wimbledon 2026" for the 2026 edition — the `CompId` changes every year). Each stage's `Events` array holds the matches. Confirmed real field meanings:
+
+- `Eid` — unique match id
+- `Eps` — status code: `"NS"` = not started, `"S1"`..`"S5"` = a set in progress, `"FT"` = finished (Full Time), `"Ret."` = a player retired mid-match (has a final result), `"W.O."` = walkover (has a final result), `"Canc."` = cancelled (no result)
+- `T1` / `T2` — arrays of player dicts (`{"ID": ..., "Nm": <name>, "Abr": ...}`); singles matches have one entry, doubles have two
+- `Tr1S1`/`Tr2S1`, `Tr1S2`/`Tr2S2`, ... up to `Tr1S5`/`Tr2S5` — games won by team 1 / team 2 in each set
 
 **Files:**
 - Create: `wimbledon/__init__.py` (empty file)
 - Create: `wimbledon/fetch_matches.py`
-- Create: `tests/fixtures/raw_sample_response.json`
+- Create: `tests/fixtures/list_by_date_sample.json`
 - Test: `tests/test_fetch_matches.py`
 
 **Interfaces:**
 - Produces: `normalize_match(raw: dict) -> dict` returning the Internal Data Contract shape above
-- Produces: `fetch_today_matches(api_key: str) -> list[dict]`, returning a list of normalized match dicts for today's Wimbledon matches
+- Produces: `fetch_today_matches(api_key: str, date: str) -> list[dict]` — `date` is `YYYYMMDD`, returns normalized Wimbledon matches only (stages where `Cnm == "Wimbledon"`)
 
-- [ ] **Step 1: Sign up for a tennis API and capture a real response**
+- [ ] **Step 1: Create the fixture file**
 
-  1. Go to https://rapidapi.com and create a free account.
-  2. Search the RapidAPI catalog for "tennis" and subscribe to a **free** plan on one of: "Tennis API" (fluis.lacasse / `tennisapi1`), "Tennis Live Data" (sportcontentapi), or "Tennis API - ATP WTA ITF". If the first one you try has no free plan or no Wimbledon/Grand Slam data on the free tier, try the next.
-  3. From the API's RapidAPI playground (or via `curl`), call whichever endpoint returns **today's matches** or **live matches** including Wimbledon. Example shape of the call (adjust host/path to the API you subscribed to):
-     ```bash
-     curl -s "https://<api-host>.p.rapidapi.com/<endpoint-path>" \
-       -H "X-RapidAPI-Key: <your-key>" \
-       -H "X-RapidAPI-Host: <api-host>.p.rapidapi.com"
-     ```
-  4. Save the raw JSON response exactly as returned to `tests/fixtures/raw_sample_response.json`.
-  5. If today's response has no finished matches (e.g. you're doing this outside the tournament), also fetch and save a **second** fixture, `tests/fixtures/raw_sample_response_historical.json`, by calling the API's historical/results endpoint for a past Wimbledon date, so you have at least one real `finished` match to test against. If the API has no historical endpoint on the free tier, manually take the raw sample and edit a copy so one match's status field is set to whatever raw value you determined means "finished" in Step 2 below — keep this edited copy as `tests/fixtures/raw_sample_response_historical.json` and note in a comment at the top of the test file that it was hand-edited from a real sample for the finished-match case.
+  Create `tests/fixtures/list_by_date_sample.json` with this exact content (a real captured response, trimmed to 2 Wimbledon stages plus one non-Wimbledon stage, covering a not-started match, a finished match, and a stage that must be filtered out):
 
-- [ ] **Step 2: Identify the real field names**
+  ```json
+  {
+    "Ts": 1783415120,
+    "Stages": [
+      {
+        "Sid": "25632",
+        "Snm": "Men's Singles",
+        "Cnm": "Wimbledon",
+        "CompId": "1112",
+        "CompN": "Wimbledon 2026",
+        "Events": [
+          {
+            "Eid": "1818982",
+            "T1": [{"ID": "958", "Nm": "Jannik Sinner", "Abr": "JAN"}],
+            "T2": [{"ID": "922", "Nm": "Jan-Lennard Struff", "Abr": "JAN"}],
+            "Eps": "NS",
+            "Esid": 1
+          },
+          {
+            "Eid": "1808175",
+            "Tr1S1": "7", "Tr2S1": "6",
+            "Tr1S2": "7", "Tr2S2": "6",
+            "Tr1S3": "6", "Tr2S3": "4",
+            "T1": [{"ID": "958", "Nm": "Jannik Sinner", "Abr": "JAN"}],
+            "T2": [{"ID": "1128", "Nm": "Nuno Borges", "Abr": "NUN"}],
+            "Eps": "FT",
+            "Esid": 6
+          }
+        ]
+      },
+      {
+        "Sid": "25634",
+        "Snm": "Women's Singles",
+        "Cnm": "Wimbledon",
+        "CompId": "1112",
+        "CompN": "Wimbledon 2026",
+        "Events": [
+          {
+            "Eid": "1818987",
+            "T1": [{"ID": "579", "Nm": "Jessica Pegula", "Abr": "JES"}],
+            "T2": [{"ID": "693", "Nm": "Coco Gauff", "Abr": "COR"}],
+            "Eps": "NS",
+            "Esid": 1
+          }
+        ]
+      },
+      {
+        "Sid": "25741",
+        "Snm": "Bogota, Colombia",
+        "Cnm": "ATP Challenger",
+        "Events": [
+          {
+            "Eid": "1818821",
+            "T1": [{"ID": "224714", "Nm": "Juan Sebastian Osorio", "Abr": "JUA"}],
+            "T2": [{"ID": "193257", "Nm": "Matias Soto", "Abr": "MAT"}],
+            "Eps": "NS",
+            "Esid": 1
+          }
+        ]
+      }
+    ]
+  }
+  ```
 
-  Open the saved fixture and identify:
-  - Which key is the unique match identifier
-  - Which key holds match status, and what the literal values are for "not started", "in progress", and "finished" (tennis APIs commonly use numeric codes or short strings like `"notstarted"`, `"inprogress"`, `"finished"` — read whatever this specific API actually returns)
-  - Which keys hold the two players'/teams' names
-  - Which key (or nested structure) holds the score
-
-- [ ] **Step 3: Write the failing tests**
+- [ ] **Step 2: Write the failing tests**
 
   ```python
   # tests/test_fetch_matches.py
   import json
   from pathlib import Path
 
-  import pytest
   import responses
 
   from wimbledon.fetch_matches import normalize_match, fetch_today_matches
@@ -114,107 +165,135 @@ No public tennis live-score API documentation shows a full example JSON response
       return json.loads((FIXTURES / name).read_text())
 
 
-  def test_normalize_match_returns_internal_contract_shape():
-      raw = load_fixture("raw_sample_response.json")
-      first_match = raw["<list-key-you-found>"][0]  # replace with the real key path
+  def test_normalize_match_maps_not_started_singles_match():
+      raw = load_fixture("list_by_date_sample.json")
+      event = raw["Stages"][0]["Events"][0]
 
-      result = normalize_match(first_match)
+      result = normalize_match(event)
 
-      assert set(result.keys()) == {"match_id", "status", "player1", "player2", "score"}
-      assert isinstance(result["match_id"], str)
-      assert result["status"] in {"not_started", "in_progress", "finished"}
+      assert result == {
+          "match_id": "1818982",
+          "status": "not_started",
+          "player1": "Jannik Sinner",
+          "player2": "Jan-Lennard Struff",
+          "score": "",
+      }
 
 
-  def test_normalize_match_maps_finished_status():
-      raw = load_fixture("raw_sample_response_historical.json")
-      finished_raw_match = raw["<list-key-you-found>"][0]  # pick one you know is finished
+  def test_normalize_match_maps_finished_match_with_score():
+      raw = load_fixture("list_by_date_sample.json")
+      event = raw["Stages"][0]["Events"][1]
 
-      result = normalize_match(finished_raw_match)
+      result = normalize_match(event)
 
-      assert result["status"] == "finished"
-      assert result["player1"]
-      assert result["player2"]
-      assert result["score"]
+      assert result == {
+          "match_id": "1808175",
+          "status": "finished",
+          "player1": "Jannik Sinner",
+          "player2": "Nuno Borges",
+          "score": "7-6, 7-6, 6-4",
+      }
 
 
   @responses.activate
-  def test_fetch_today_matches_calls_api_and_normalizes():
-      raw = load_fixture("raw_sample_response.json")
+  def test_fetch_today_matches_returns_only_wimbledon_stages():
+      raw = load_fixture("list_by_date_sample.json")
       responses.add(
           responses.GET,
-          "https://<api-host>.p.rapidapi.com/<endpoint-path>",
+          "https://livescore6.p.rapidapi.com/matches/v2/list-by-date",
           json=raw,
           status=200,
       )
 
-      result = fetch_today_matches(api_key="fake-key")
+      result = fetch_today_matches(api_key="fake-key", date="20260707")
 
-      assert isinstance(result, list)
-      assert all(set(m.keys()) == {"match_id", "status", "player1", "player2", "score"} for m in result)
+      assert len(result) == 3
+      match_ids = {m["match_id"] for m in result}
+      assert match_ids == {"1818982", "1808175", "1818987"}
+      assert "1818821" not in match_ids
   ```
 
-  Fill in `<list-key-you-found>` and the URL with the real values from Step 2 — these are not placeholders left for later, they must be the actual keys/URL you observed before this step is considered done.
-
-- [ ] **Step 4: Run tests to verify they fail**
+- [ ] **Step 3: Run tests to verify they fail**
 
   Run: `pytest tests/test_fetch_matches.py -v`
-  Expected: FAIL with `ModuleNotFoundError` or `ImportError` (module doesn't exist yet)
+  Expected: FAIL with `ModuleNotFoundError: No module named 'wimbledon.fetch_matches'`
 
-- [ ] **Step 5: Implement `wimbledon/fetch_matches.py`**
-
-  Write the module using the real field names/URL you identified. The shape (with placeholder-style names replaced by what you actually found) looks like:
+- [ ] **Step 4: Implement `wimbledon/fetch_matches.py`**
 
   ```python
   # wimbledon/fetch_matches.py
   import requests
 
-  API_HOST = "<api-host>.p.rapidapi.com"
-  MATCHES_URL = f"https://{API_HOST}/<endpoint-path>"
+  API_HOST = "livescore6.p.rapidapi.com"
+  MATCHES_URL = f"https://{API_HOST}/matches/v2/list-by-date"
 
   STATUS_MAP = {
-      "<raw not-started value>": "not_started",
-      "<raw in-progress value>": "in_progress",
-      "<raw finished value>": "finished",
+      "NS": "not_started",
+      "FT": "finished",
+      "Ret.": "finished",
+      "W.O.": "finished",
   }
+
+  SET_KEYS = [f"S{i}" for i in range(1, 6)]
+
+
+  def _team_name(team: list) -> str:
+      return " / ".join(player["Nm"] for player in team)
+
+
+  def _format_score(raw: dict) -> str:
+      sets = []
+      for set_key in SET_KEYS:
+          t1_key = f"Tr1{set_key}"
+          t2_key = f"Tr2{set_key}"
+          if t1_key in raw and t2_key in raw:
+              sets.append(f"{raw[t1_key]}-{raw[t2_key]}")
+      return ", ".join(sets)
 
 
   def normalize_match(raw: dict) -> dict:
       return {
-          "match_id": str(raw["<match-id-key>"]),
-          "status": STATUS_MAP.get(raw["<status-key>"], "not_started"),
-          "player1": raw["<player1-key>"],
-          "player2": raw["<player2-key>"],
-          "score": raw["<score-key>"],
+          "match_id": str(raw["Eid"]),
+          "status": STATUS_MAP.get(raw.get("Eps"), "not_started"),
+          "player1": _team_name(raw["T1"]),
+          "player2": _team_name(raw["T2"]),
+          "score": _format_score(raw),
       }
 
 
-  def fetch_today_matches(api_key: str) -> list[dict]:
+  def fetch_today_matches(api_key: str, date: str) -> list[dict]:
       response = requests.get(
           MATCHES_URL,
           headers={
               "X-RapidAPI-Key": api_key,
               "X-RapidAPI-Host": API_HOST,
           },
+          params={"Category": "tennis", "Date": date},
           timeout=15,
       )
       response.raise_for_status()
-      raw_matches = response.json()["<list-key-you-found>"]
-      return [normalize_match(m) for m in raw_matches]
+      data = response.json()
+
+      matches = []
+      for stage in data.get("Stages", []):
+          if stage.get("Cnm") != "Wimbledon":
+              continue
+          for event in stage.get("Events", []):
+              matches.append(normalize_match(event))
+      return matches
   ```
 
-  Replace every `<...>` with the literal values you found in Step 2 — the committed file must contain no angle-bracket placeholders.
-
-- [ ] **Step 6: Run tests to verify they pass**
+- [ ] **Step 5: Run tests to verify they pass**
 
   Run: `pytest tests/test_fetch_matches.py -v`
   Expected: PASS (3 passed)
 
-- [ ] **Step 7: Install test dependencies and commit**
+- [ ] **Step 6: Install test dependencies and commit**
 
   ```bash
   pip install requests pytest responses
-  git add wimbledon/__init__.py wimbledon/fetch_matches.py tests/test_fetch_matches.py tests/fixtures/raw_sample_response.json tests/fixtures/raw_sample_response_historical.json
-  git commit -m "Add fetch_matches module with real Wimbledon API integration"
+  git add wimbledon/__init__.py wimbledon/fetch_matches.py tests/test_fetch_matches.py tests/fixtures/list_by_date_sample.json
+  git commit -m "Add fetch_matches module using the LiveScore API"
   ```
 
 ---
@@ -519,7 +598,7 @@ No public tennis live-score API documentation shows a full example JSON response
 - Test: `tests/test_main.py`
 
 **Interfaces:**
-- Consumes: `wimbledon.fetch_matches.fetch_today_matches`, `wimbledon.state_store.load_state`/`save_state`, `wimbledon.notifier.build_digest_message`/`send_telegram_message`
+- Consumes: `wimbledon.fetch_matches.fetch_today_matches(api_key: str, date: str) -> list[dict]` (the `date` argument is `YYYYMMDD`, computed from the current UTC date inside `run()`), `wimbledon.state_store.load_state`/`save_state`, `wimbledon.notifier.build_digest_message`/`send_telegram_message`
 - Produces: `run(api_key: str, bot_token: str, chat_id: str, state_path: str) -> None`
 
 - [ ] **Step 1: Write the failing tests**
@@ -629,6 +708,7 @@ No public tennis live-score API documentation shows a full example JSON response
 
   ```python
   # main.py
+  import datetime
   import os
 
   import requests
@@ -644,8 +724,10 @@ No public tennis live-score API documentation shows a full example JSON response
       state = load_state(state_path)
       already_notified = set(state["notified_match_ids"])
 
+      today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
+
       try:
-          matches = fetch_today_matches(api_key)
+          matches = fetch_today_matches(api_key, today)
       except requests.RequestException as exc:
           print(f"Failed to fetch matches: {exc}")
           return

@@ -61,5 +61,5 @@
 
 ## 待實作階段確認的事項
 
-- 具體採用哪個免費額度 Wimbledon/網球比分 API（候選：RapidAPI 上的 Tennis API 系列），需在實作時申請並驗證其 `status` 欄位是否符合本設計假設
+- ~~具體採用哪個免費額度 Wimbledon/網球比分 API~~ 已確認：使用 RapidAPI 上的 **LiveScore**（開發者 Api Dojo，host `livescore6.p.rapidapi.com`），Basic 免費方案（50 requests/day）。透過 `matches/v2/list-by-date` 端點（`Category=tennis`、`Date=YYYYMMDD`）取得比賽列表，篩選 `Cnm == "Wimbledon"` 的賽事。
 - Telegram Bot Token 與 Chat ID 的取得與設定（存入 GitHub Secrets）
