@@ -1,7 +1,7 @@
 import pytest
 import responses
 
-from wimbledon.notifier import build_digest_message, TELEGRAM_MAX_LENGTH, send_telegram_message
+from wimbledon.notifier import build_digest_message, TELEGRAM_MAX_LENGTH, send_telegram_message, _abbreviate_name
 
 
 def make_match(i):
@@ -75,3 +75,34 @@ def test_send_telegram_message_raises_on_http_error():
 
     with pytest.raises(Exception):
         send_telegram_message("FAKE_TOKEN", "12345", "hello")
+
+
+def test_abbreviate_name_with_first_and_last_name():
+    assert _abbreviate_name("Novak Djokovic") == "N. Djokovic"
+
+
+def test_abbreviate_name_with_first_and_last_name_carlos():
+    assert _abbreviate_name("Carlos Alcaraz") == "C. Alcaraz"
+
+
+def test_abbreviate_name_with_single_word():
+    assert _abbreviate_name("Pele") == "Pele"
+
+
+def test_build_digest_message_abbreviates_player_names():
+    match1 = {
+        "match_id": "1",
+        "status": "finished",
+        "player1": "Novak Djokovic",
+        "player2": "Carlos Alcaraz",
+        "score": "6-4, 6-2, 6-3",
+    }
+    chunks = build_digest_message([match1])
+
+    assert len(chunks) == 1
+    # Check that abbreviated names are present
+    assert "N. Djokovic" in chunks[0]
+    assert "C. Alcaraz" in chunks[0]
+    # Check that full names are NOT present
+    assert "Novak Djokovic" not in chunks[0]
+    assert "Carlos Alcaraz" not in chunks[0]

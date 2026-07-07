@@ -5,8 +5,18 @@ TELEGRAM_MAX_LENGTH = 4096
 HEADER = "\U0001F3BE Wimbledon 賽果更新\n\n"
 
 
+def _abbreviate_name(name: str) -> str:
+    parts = name.split(" ", 1)
+    if len(parts) < 2:
+        return name
+    first, surname = parts
+    return f"{first[0]}. {surname}"
+
+
 def _format_line(match: dict) -> str:
-    return f"- {match['player1']} vs {match['player2']}: {match['score']}\n"
+    player1_abbr = _abbreviate_name(match['player1'])
+    player2_abbr = _abbreviate_name(match['player2'])
+    return f"- {player1_abbr} vs {player2_abbr}: {match['score']}\n"
 
 
 def build_digest_message(matches: list[dict]) -> list[str]:
