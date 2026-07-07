@@ -17,6 +17,7 @@
 - A match must only be added to the "already notified" state after the Telegram send for its digest chunk has succeeded. Never mark a match notified before the send that reports it has succeeded.
 - On any error calling the tennis API or the Telegram API, log the error and end the run without modifying the state file — the next hourly run retries naturally.
 - A day with no Wimbledon matches (off-season or rest day) is not an error; the run ends normally.
+- Player names in the Telegram digest are abbreviated to "first initial. surname" (e.g. `"Novak Djokovic"` → `"N. Djokovic"`, `"Carlos Alcaraz"` → `"C. Alcaraz"`), by splitting on the first space and keeping everything after it as the surname portion. Names with no space (a single word) are left unabbreviated. This applies only to the digest message text — the internal `player1`/`player2` fields stay as full names.
 
 ---
 
