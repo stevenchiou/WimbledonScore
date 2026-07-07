@@ -9,6 +9,11 @@ STATUS_MAP = {
     "FT": "finished",
     "Ret.": "finished",
     "W.O.": "finished",
+    "S1": "in_progress",
+    "S2": "in_progress",
+    "S3": "in_progress",
+    "S4": "in_progress",
+    "S5": "in_progress",
 }
 
 SET_KEYS = [f"S{i}" for i in range(1, 6)]

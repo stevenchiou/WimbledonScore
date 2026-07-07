@@ -43,6 +43,26 @@ def test_normalize_match_maps_finished_match_with_score():
     }
 
 
+def test_normalize_match_maps_in_progress_match():
+    """Test that set-in-progress codes (S1-S5) map to 'in_progress' status."""
+    event = {
+        "Eid": "9999999",
+        "T1": [{"ID": "123", "Nm": "Player One", "Abr": "P1"}],
+        "T2": [{"ID": "456", "Nm": "Player Two", "Abr": "P2"}],
+        "Eps": "S2",
+    }
+
+    result = normalize_match(event)
+
+    assert result == {
+        "match_id": "9999999",
+        "status": "in_progress",
+        "player1": "Player One",
+        "player2": "Player Two",
+        "score": "",
+    }
+
+
 @responses.activate
 def test_fetch_today_matches_returns_only_wimbledon_stages():
     raw = load_fixture("list_by_date_sample.json")
