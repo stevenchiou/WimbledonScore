@@ -89,6 +89,29 @@ def test_abbreviate_name_with_single_word():
     assert _abbreviate_name("Pele") == "Pele"
 
 
+def test_abbreviate_name_with_doubles_team():
+    assert _abbreviate_name("Jannik Sinner / Nuno Borges") == "J. Sinner / N. Borges"
+
+
+def test_build_digest_message_abbreviates_doubles_team_names():
+    match1 = {
+        "match_id": "1",
+        "status": "finished",
+        "player1": "Jannik Sinner / Nuno Borges",
+        "player2": "Carlos Alcaraz / Rafael Nadal",
+        "score": "6-4, 6-2, 6-3",
+    }
+    chunks = build_digest_message([match1])
+
+    assert len(chunks) == 1
+    # Check that abbreviated names are present
+    assert "J. Sinner / N. Borges" in chunks[0]
+    assert "C. Alcaraz / R. Nadal" in chunks[0]
+    # Check that full names are NOT present
+    assert "Jannik Sinner / Nuno Borges" not in chunks[0]
+    assert "Carlos Alcaraz / Rafael Nadal" not in chunks[0]
+
+
 def test_build_digest_message_abbreviates_player_names():
     match1 = {
         "match_id": "1",
